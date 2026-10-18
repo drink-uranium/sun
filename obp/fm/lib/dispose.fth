@@ -26,7 +26,7 @@ variable header:?   \ If true, output 'header:' else output 'headerless:'
 : f.acf  ( anf acf  -- )
    " h# " ftype
    origin-  (.)   ( adr len )
-   5 over - 0 ?do  ascii 0 ofd @ fputc loop  ( adr len )
+   5 over - 0 max 0 ?do  ascii 0 ofd @ fputc loop  ( adr len )
    ftype
    header:? @  if  "  header: "  else  "  headerless: "  then
    ftype
