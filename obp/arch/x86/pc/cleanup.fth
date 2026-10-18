@@ -42,6 +42,13 @@ here h# 10 round-up here - 0 ?do 0 c, loop
 
 warning on
 
+\ Supress file notification warnings for dup defs for runtime.
+patch noop where duplicate-notification
+
+\ remove the forth->system error interface
+patch 2drop fsyscall (compile-time-error)
+patch 2drop fsyscall (compile-time-warning)
+
 dispose 0 0 set-transize
 
 ' noop is title         \ Turn off the Bradley Forthware copyright message

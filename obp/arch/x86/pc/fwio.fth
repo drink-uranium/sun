@@ -18,5 +18,6 @@ overload: stand-init-io  ( -- )
    install-uart-io
    uart-cr  " OpenBoot x86: console initialized" uart-type  uart-cr
    ['] fw-bye  ['] bye  (is
+   ['] 2drop   ['] sync-cache  (is		\ Caches are coherent
 ;
 headers

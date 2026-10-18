@@ -21,6 +21,16 @@ fload ${BP}/os/stand/sysuart.fth
 fload ${BP}/arch/x86/pc/heap.fth	\ Memory layout
 fload ${BP}/arch/x86/pc/fwio.fth	\ stand-init-io
 
+fload ${BP}/arch/x86/pc/rootnode.fth	\ The root of the device tree
+fload ${BP}/arch/x86/pc/mmu.fth		\ Identity address translation
+fload ${BP}/arch/x86/pc/memory.fth	\ Physical memory
+fload ${BP}/arch/x86/pc/cpu.fth		\ Processor and timing
+fload ${BP}/arch/x86/pc/model.fth		\ /openprom model and version props.
+
+fload ${BP}/arch/x86/pc/loadconfig.fth	\ Configuration variables
+fload ${BP}/arch/x86/pc/nvram.fth	\ Configuration variable storage
+' diag-switch? is diagnostic-mode?
+
 fload ${BP}/arch/x86/pc/startup.fth
 
 fload ${BP}/arch/x86/pc/cleanup.fth

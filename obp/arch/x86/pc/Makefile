@@ -87,7 +87,7 @@ $(B)/forth: $(BP)/os/unix/x86/wrapper.c | $(B)
 
 $(B)/version.fth: | $(B)
 	( echo "headerless" ; \
-	  date '+td %m td %d bwjoin td %H td %M bwjoin wljoin td %Y' ; \
+	  date '+td %M td %H bwjoin td %d td %m bwjoin wljoin td %Y' ; \
 	  echo "2constant compile-signature" ; \
 	  echo "create (sub-release ,\" x86\"" ; \
 	  echo "create (obp-release ,\" 4.0.0\"" ; \
