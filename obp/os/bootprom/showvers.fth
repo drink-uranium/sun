@@ -47,9 +47,12 @@ copyright: Use is subject to license terms.
 \  The word "sub-release" is now defined in version.fth
 \  which is specific to a machine.
 headerless
-: compile-date$ ( signature -- )
+\ On 32-bit systems, the signature is a double number (date.time year)
+64\ : compile-date$ ( signature -- )
+32\ : compile-date$ ( d.signature -- )
    base @ >r decimal
-   xlsplit lwsplit drop  ( date.time year )
+64\ xlsplit
+   lwsplit drop          ( date.time year )
    swap lwsplit          ( year time date )
    wbsplit swap rot      ( year month day time )
    wbsplit swap          ( year month day hour min )

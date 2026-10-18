@@ -26,6 +26,7 @@ headers
 \ 6 = l!
 \ 7 = x!
 
+[ifnexist] safe-touch	\ The x86 kernel provides safe-touch
 code safe-touch
    %g0	tos	scr		add		\ get operation
    scr	3	scr		sllx		\ shift left for offset
@@ -58,6 +59,7 @@ code safe-touch
       sp    2 /n*	sp      add             \ the two stack items
    then
 c;
+[then]
 
 only forth also hidden also
 hidden definitions

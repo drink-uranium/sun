@@ -131,6 +131,8 @@ fload ${BP}/fm/kernel/x86/parseline.fth
 
 fload ${BP}/fm/kernel/fileio.fth
 
+fload ${BP}/fm/kernel/x86/cpucode.fth
+
 fload ${BP}/fm/cwrapper/x86/boot.fth
 fload ${BP}/fm/kernel/init.fth
 fload ${BP}/fm/kernel/x86/finish.fth

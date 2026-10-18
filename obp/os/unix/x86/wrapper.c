@@ -191,7 +191,12 @@ static void *
 f_alloc_mem(u32 nbytes)
 {
 	struct blk *b, *n;
-	u32 need = (nbytes + sizeof (struct blk) + 15) & ~15;
+	/*
+	 * The extra 16 bytes of slack tolerate small overruns; for example
+	 * $canonical (fm/kernel/voccom.fth) stores 33 bytes into its 32-byte
+	 * buffer for names longer than 31 characters.
+	 */
+	u32 need = (nbytes + sizeof (struct blk) + 16 + 15) & ~15;
 
 	for (b = heap_base; b < heap_end; b = NEXTBLK(b)) {
 		if (b->size & 1)
@@ -443,6 +448,103 @@ f_nosys(void)
 }
 
 /*
+ * Build-time symbols: -D name[=value] on the command line, [define],
+ * [undef], [set-symbol] and [get-symbol] (fm/lib/brackif.fth).
+ */
+#define NSYMS	256
+struct symbol {
+	char *name;
+	int namelen;
+	char *value;
+	int valuelen;
+};
+static struct symbol symbols[NSYMS];
+static char symspace[16384];
+static int symused;
+
+static char *
+savestr(const char *s, int len)
+{
+	char *p;
+
+	if (symused + len + 1 > (int)sizeof (symspace))
+		fatal("out of symbol space", 0);
+	p = symspace + symused;
+	memcpy(p, s, len);
+	p[len] = 0;
+	symused += len + 1;
+	return p;
+}
+
+static struct symbol *
+findsym(const char *name, int len)
+{
+	int i;
+
+	for (i = 0; i < NSYMS; i++)
+		if (symbols[i].name && symbols[i].namelen == len &&
+		    strncmp(symbols[i].name, name, len) == 0)
+			return &symbols[i];
+	return 0;
+}
+
+static void
+setsym(const char *name, int len, const char *value, int vlen)
+{
+	struct symbol *sp = findsym(name, len);
+	int i;
+
+	if (sp == 0) {
+		for (i = 0; i < NSYMS && symbols[i].name; i++)
+			;
+		if (i == NSYMS)
+			fatal("too many symbols", 0);
+		sp = &symbols[i];
+		sp->name = savestr(name, len);
+		sp->namelen = len;
+	}
+	sp->value = savestr(value ? value : "", vlen);
+	sp->valuelen = vlen;
+}
+
+static void
+unsetsym(const char *name, int len)
+{
+	struct symbol *sp = findsym(name, len);
+
+	if (sp)
+		sp->name = 0;
+}
+
+static void
+define_arg(const char *arg)
+{
+	int len;
+
+	for (len = 0; arg[len] && arg[len] != '='; len++)
+		;
+	if (arg[len] == '=')
+		setsym(arg, len, arg + len + 1, strlen(arg + len + 1));
+	else
+		setsym(arg, len, 0, 0);
+}
+
+static int
+write_all(int fd, const char *buf, int len)
+{
+	int n;
+
+	while (len > 0) {
+		n = xwrite(fd, buf, len);
+		if (n <= 0)
+			return -1;
+		buf += n;
+		len -= n;
+	}
+	return 0;
+}
+
+/*
  * Extended operations through fsyscall 45.  The argument is the Forth
  * stack pointer; sp[0] is the sub-operation code.  Returns the new stack
  * pointer.
@@ -476,7 +578,54 @@ f_extended(s32 *sp)
 		sp[0] = n < 0 ? 0 : n;
 		sp[1] = (s32)buf;
 		break;
-	default:		/* Compile-time error marks, xref, etc. */
+	case 45:		/* ( up,len dic,len file$ -- ) save an image */
+		size = sp[0];
+		name = (char *)sp[1];
+		if (size >= (s32)sizeof (pathbuf))
+			size = sizeof (pathbuf) - 1;
+		memcpy(pathbuf, name, size);
+		pathbuf[size] = 0;
+		fd = syscall3(SYS_open, (s32)expand(pathbuf),
+		    O_WRONLY | O_CREAT | O_TRUNC, 0666);
+		if (fd < 0)
+			fatal("can't create", pathbuf);
+		if (write_all(fd, (char *)sp[3], sp[2]) < 0 ||
+		    write_all(fd, (char *)sp[5], sp[4]) < 0)
+			fatal("can't write", pathbuf);
+		syscall3(SYS_close, fd, 0, 0);
+		sp += 6;
+		break;
+	case 53:		/* ( [data,len] name,len flag -- ) set symbol */
+		if (sp[0]) {
+			setsym((char *)sp[2], sp[1], (char *)sp[4], sp[3]);
+			sp += 5;
+		} else {
+			unsetsym((char *)sp[2], sp[1]);
+			sp += 3;
+		}
+		break;
+	case 55:		/* ( name,len -- data,len ) get symbol */
+		{
+			struct symbol *sym = findsym((char *)sp[1], sp[0]);
+			if (sym) {
+				sp[1] = (s32)sym->value;
+				sp[0] = sym->valuelen;
+			} else {
+				sp[1] = 0;
+				sp[0] = 0;
+			}
+		}
+		break;
+	case 57:		/* ( adr,len -- adr,len ) message text */
+		break;
+	case 49:		/* ( str,len ref? -- str,len ) xref notify */
+		sp += 1;
+		break;
+	case 50:		/* ( flag -- ) xref control */
+	case 51:		/* ( n -- ) xref state */
+		sp += 1;
+		break;
+	default:		/* Compile-time error and warning marks */
 		break;
 	}
 	return sp;
@@ -538,12 +687,40 @@ main(int argc, char **argv, char **env)
 	int fd, n, total;
 
 	envp = env;
-	if (argc >= 3 && argv[1][0] == '-' && argv[1][1] == 'd' &&
-	    argv[1][2] == 0) {
-		dicname = argv[2];
-		argv[2] = argv[0];
-		argv += 2;
-		argc -= 2;
+	/*
+	 * Options for the wrapper are removed from the argument list;
+	 * the rest are passed to Forth.
+	 *   -d file	dictionary file
+	 *   -D sym[=val]	define a build-time symbol
+	 *   -U sym	undefine a build-time symbol
+	 *   -e n	ignored (extra memory, for compatibility)
+	 */
+	{
+		int i, j = 1;
+
+		for (i = 1; i < argc; i++) {
+			char *a = argv[i];
+			if (a[0] == '-' && a[2] == 0 && i + 1 < argc &&
+			    (a[1] == 'd' || a[1] == 'D' || a[1] == 'U' ||
+			    a[1] == 'e')) {
+				if (a[1] == 'd')
+					dicname = argv[i + 1];
+				else if (a[1] == 'D')
+					define_arg(argv[i + 1]);
+				else if (a[1] == 'U')
+					unsetsym(argv[i + 1],
+					    strlen(argv[i + 1]));
+				i++;
+				continue;
+			}
+			if (a[0] == '-' && a[1] == 'D' && a[2]) {
+				define_arg(a + 2);
+				continue;
+			}
+			argv[j++] = a;
+		}
+		argv[j] = 0;
+		argc = j;
 	}
 	if (dicname == 0)
 		dicname = getenv2("FORTH_DIC", 9);

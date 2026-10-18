@@ -62,7 +62,9 @@ only forth also hidden also root also definitions
 only forth hidden also forth also definitions
 
 fload ${BP}/os/bootprom/propenc.fth	\ Property encoding primitive
+[ifnexist] >instance-data	\ The x86 kernel provides >instance-data
 fload ${BP}/os/bootprom/sparc/instance.fth
+[then]
 fload ${BP}/os/bootprom/devtree.fth	\ Device node creation
 
 fload ${BP}/os/bootprom/breadth.fth	\ Device tree search primitives
