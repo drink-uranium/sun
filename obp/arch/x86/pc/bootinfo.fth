@@ -8,13 +8,13 @@ copyright: Use is subject to license terms.
 \ the layout in start.S.
 
 headerless
-h# 10.0000 constant stub-base
+h# 100.0000 constant stub-base	\ Must agree with STUB_BASE in the Makefile
 stub-base h# 100 + constant boot-info
 
 : boot-magic      ( -- n )    boot-info          l@  ;	\ %eax at entry
 : boot-info-adr   ( -- adr )  boot-info h# 04 +  l@  ;	\ %ebx at entry
 : initial-mem-end ( -- adr )  boot-info h# 08 +  l@  ;	\ Forth's memory
-: exception-entry ( -- adr )  boot-info h# 0c +      ;
+: exception-entry-adr ( -- adr )  boot-info h# 0c +      ;
 : exception-state ( -- adr )  boot-info h# 10 +  l@  ;
 : idt-base        ( -- adr )  boot-info h# 14 +  l@  ;
 : stub-end        ( -- adr )  boot-info h# 18 +  l@  ;

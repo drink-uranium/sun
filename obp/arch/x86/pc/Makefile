@@ -39,9 +39,9 @@ PYTHON	?= python3
 QEMU	?= qemu-system-i386
 
 # Memory layout; see arch/x86/pc/heap.fth
-STUB_BASE	:= 0x00100000
-DICT_ORIGIN	:= 0x00200000
-MEM_END		:= 0x00e00000
+STUB_BASE	:= 0x01000000
+DICT_ORIGIN	:= 0x01100000
+MEM_END		:= 0x01d00000
 
 KERNEL_SRC := $(wildcard $(BP)/fm/kernel/*.fth $(BP)/fm/kernel/x86/*.fth) \
 	$(BP)/fm/cwrapper/syskey.fth $(BP)/fm/cwrapper/sysdisk.fth \
@@ -69,7 +69,7 @@ $(B)/kernel.S $(B)/kernel.labels: $(KERNEL_SRC) $(BP)/fm/meta/x86/meta86.py | $(
 $(B)/kernel.o: $(B)/kernel.S
 	$(AS) -o $@ $<
 
-$(B)/kernel.elf: $(B)/kernel.o
+$(B)/kernel.elf: $(B)/kernel.o Makefile
 	$(LD) -N -Ttext=$(DICT_ORIGIN) -e cold_entry --no-warn-rwx-segments \
 		-o $@ $<
 
@@ -108,14 +108,14 @@ $(B)/openboot.dic: $(B)/forth $(B)/kernel.dic $(B)/kernel.fth \
 
 # ---- 3. The firmware image
 
-$(B)/start.o: start.S | $(B)
+$(B)/start.o: start.S Makefile | $(B)
 	$(CC) -m32 -c -DDICT_ORIGIN=$(DICT_ORIGIN) -DMEM_END=$(MEM_END) \
 		-o $@ $<
 
 $(B)/dict.o: dict.S $(B)/openboot.dic
 	$(CC) -m32 -c -DDICT_FILE='"$(abspath $(B))/openboot.dic"' -o $@ dict.S
 
-$(B)/openboot.elf: $(B)/start.o $(B)/dict.o openboot.ld
+$(B)/openboot.elf: $(B)/start.o $(B)/dict.o openboot.ld Makefile
 	$(LD) -T openboot.ld --defsym STUB_BASE=$(STUB_BASE) \
 		--defsym DICT_ORIGIN=$(DICT_ORIGIN) --no-warn-rwx-segments \
 		-o $@ $(B)/start.o $(B)/dict.o

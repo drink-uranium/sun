@@ -31,6 +31,24 @@ fload ${BP}/arch/x86/pc/loadconfig.fth	\ Configuration variables
 fload ${BP}/arch/x86/pc/nvram.fth	\ Configuration variable storage
 ' diag-switch? is diagnostic-mode?
 
+fload ${BP}/arch/x86/pc/isa.fth		\ Legacy devices
+fload ${BP}/arch/x86/pc/serial.fth	\ ttya and ttyb
+
+fload ${BP}/cpu/x86/catchexc.fth	\ Processor exceptions
+fload ${BP}/arch/x86/pc/ramdisk.fth	\ Multiboot modules as a boot device
+
+fload ${BP}/cpu/x86/restart.fth		\ go
+
+headerless
+\ Host ID: there is no ID PROM on a PC, so this is derived from the
+\ processor signature and the amount of memory.
+: hostid  ( -- n )  cpu-signature  total-ram d# 20 >>  xor  h# 80.0000 or  ;
+headers
+: .keyboard-type  ( -- )  ." Keyboard Present"  ;
+
+\ Packages
+fload ${BP}/arch/x86/pc/loadpkg.fth
+
 fload ${BP}/arch/x86/pc/startup.fth
 
 fload ${BP}/arch/x86/pc/cleanup.fth

@@ -321,3 +321,91 @@ code call  ( [ arg5 .. arg0 ] adr -- [ arg5 .. arg0 ] result )
    mov %ebx,%esp
    push %eax			\ Return subroutine result
 c;
+
+\ ---- Running client programs
+
+\ The client interface handler and the exception handler are entered from
+\ code that is not Forth: a client program calls the client interface
+\ handler as a C function, and the boot stub jumps to the exception entry
+\ after saving the processor state.  Both locate the user area through
+\ main-task.
+
+headers
+defer cif-handler  ( arg-array -- result )	\ Set to do-cif
+defer exception-handler  ( -- )			\ Set to handle-breakpoint
+
+create cif-thread  0 , 0 ,	\ cif-handler (cif-return)
+create exception-thread  0 , 0 ,	\ exception-handler quit
+create client-sp  0 ,		\ The client's stack pointer during a call
+
+\ int cif_entry(void *args) -- called by client programs.
+\ The client's callee-saved registers are preserved.  Forth runs on the
+\ stacks that were current when the client program was started.
+label cif-entry
+   .globl cif_entry
+cif_entry:
+   push %ebp
+   push %ebx
+   push %esi
+   push %edi
+   mov 0x14(%esp),%eax			\ The argument array
+   mov %esp,{' client-sp >body}
+   mov {'body main-task},%edi
+   mov {'user saved-sp}(%edi),%esp
+   mov {'user saved-rp}(%edi),%ebp
+   cld
+   push %eax
+   mov ${' cif-thread >body},%esi
+c;
+
+code (cif-return)  ( result -- )
+   pop %eax
+   mov {' client-sp >body},%esp
+   pop %edi
+   pop %esi
+   pop %ebx
+   pop %ebp
+   ret
+end-code
+
+\ Entered from the boot stub after an exception.  The processor state has
+\ been saved; Forth starts again with empty stacks.
+label exception-entry
+   .globl exception_entry
+exception_entry:
+   mov {'body main-task},%edi
+   mov {'user .rp0}(%edi),%ebp
+   mov {'user .sp0}(%edi),%esp
+   cld
+   mov ${' exception-thread >body},%esi
+c;
+
+: init-client-entries  ( -- )
+   ['] cif-handler        cif-thread token!
+   ['] (cif-return)       cif-thread ta1+ token!
+   ['] exception-handler  exception-thread token!
+   ['] quit               exception-thread ta1+ token!
+;
+
+headers
+\ Start (or resume) a program with the processor state in the save area.
+\ The layout of the save area is given in cpu/x86/register.fth.
+\ The Forth stack pointers are saved for callbacks.
+code (go)  ( state-adr -- )
+   pop %eax
+   mov %esp,{'user saved-sp}(%edi)
+   mov %ebp,{'user saved-rp}(%edi)
+   mov %eax,%esi
+   mov 0x0c(%esi),%esp			\ %esp
+   pushl 0x48(%esi)			\ %eflags
+   pushl $0x08				\ %cs
+   pushl 0x40(%esi)			\ %eip
+   mov 0x1c(%esi),%eax			\ %eax
+   mov 0x18(%esi),%ecx			\ %ecx
+   mov 0x14(%esi),%edx			\ %edx
+   mov 0x10(%esi),%ebx			\ %ebx
+   mov 0x08(%esi),%ebp			\ %ebp
+   mov (%esi),%edi			\ %edi
+   mov 0x04(%esi),%esi			\ %esi
+   iret
+end-code

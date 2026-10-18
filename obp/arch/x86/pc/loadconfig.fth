@@ -18,6 +18,8 @@ fload ${BP}/arch/sun4u/config/nvramrc.fth
 " disk net"   d# 256  config-string  boot-device
 " "           d# 128  config-string  boot-file
 " boot"       d# 64   config-string  boot-command
+" net"        d# 256  config-string  diag-device
+" "           d# 128  config-string  diag-file
 " "             d# 512  config-long-string      network-boot-arguments
 
 true	              config-flag    auto-boot?
