@@ -13,6 +13,18 @@ alias  cd  dev
 \ to the chain.
 chain: probe-all  ( -- )  ;
 
+\ The console defaults to ttya, with ttya as the fallback (loadconfig.fth).
+\ Many PCs, laptops in particular, have no serial port, so if neither can
+\ be opened, use the display and the keyboard.
+overload: install-console  ( -- )
+   install-console
+   stdout @ 0=  stdin @ 0=  or  if
+      stdout @ 0=  if  screen output  then
+      stdin  @ 0=  if  keyboard input  then
+      console-io
+   then
+;
+
 headerless
 variable banner-done?  banner-done? off
 

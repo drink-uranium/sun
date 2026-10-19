@@ -15,7 +15,17 @@ h# 3f8 value uart-base
 
 d# 115200 value uart-baud
 
+\ Machines without a serial port (most laptops) read ff from the
+\ registers, which looks like a UART that always has input.  The UART is
+\ there if its scratch register holds what is written to it.
+false value uart-present?
+: probe-uart  ( -- )
+   h# 5a 7 uart!  7 uart@ h# 5a =  h# a5 7 uart!  7 uart@ h# a5 =  and
+   to uart-present?
+;
+
 : init-uart  ( -- )
+   probe-uart  uart-present? 0=  if  exit  then
    0 1 uart!				\ No interrupts
    h# 80 3 uart!			\ Divisor latch access
    d# 115200 uart-baud /  wbsplit	( low high )
@@ -25,9 +35,11 @@ d# 115200 value uart-baud
    h# 0b 4 uart!			\ DTR, RTS, OUT2
 ;
 
-: ukey?  ( -- flag )  5 uart@  1 and  0<>  ;
+: ukey?  ( -- flag )  uart-present?  if  5 uart@  1 and  0<>  else  false  then  ;
 : ukey  ( -- char )  begin  ukey?  until  0 uart@  ;
-: uemit  ( char -- )  begin  5 uart@ h# 20 and  until  0 uart!  ;
+: uemit  ( char -- )
+   uart-present?  if  begin  5 uart@ h# 20 and  until  0 uart!  else  drop  then
+;
 
 \ Diagnostic output that does not depend on the console
 : uart-emit  ( char -- )  uemit  ;
