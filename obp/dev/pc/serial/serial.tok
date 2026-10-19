@@ -1,28 +1,36 @@
-id: @(#)serialpkg.fth 1.1 26/10/18
-purpose: Package body for a PC serial port
+id: @(#)serial.tok 1.1 26/10/19
+purpose: FCode driver for the PC serial ports (16550 UARTs on the ISA bus)
 copyright: Copyright 2006 Sun Microsystems, Inc.  All Rights Reserved
 copyright: Copyright 2026 The OpenBoot x86 port contributors
 copyright: Use is subject to license terms.
 
-\ Loaded between begin-package and end-package by serial.fth, which sets
-\ serial-console$ to the name of the port ("ttya" or "ttyb").
+\ The PC version of dev/southbridge/isa-devices/serial/serial.tok.
+\
+\ The unit address is an ISA I/O space address (e.g. "i3f8"), so
+\ my-address is the I/O port base and the "map-in" of the parent ISA bus
+\ returns the port number; the 16550 access routines use rb@ and rb!,
+\ which do port I/O for port addresses.  The UART at the first standard
+\ address (3f8, COM1) is ttya and uses ttya-mode; the others use ttyb-mode.
 
+Fcode-Version3
+
+headerless
 h# 8            constant tty-size
 h# 1            constant #channels
 my-address      constant tty-base
 
-" serial"	2dup device-name
+" serial"	2dup name
 ( serial )	device-type
-" su16550"	encode-string
-" su"	encode-string encode+ " compatible" property
+" pnpPNP,501"	encode-string
+" su16550"	encode-string encode+
+" su"		encode-string encode+ " compatible" property
 
-tty-base h# 3f8 =  if  4  else  3  then  encode-int " interrupts" property
+\ COM1 and COM3 use IRQ 4, COM2 and COM4 use IRQ 3
+tty-base h# 100 and  if  4  else  3  then  encode-int " interrupts" property
 
 : en+ ( xdr,len int -- xdr',len' ) encode-int encode+ ;
 
 my-space encode-int	tty-base en+	tty-size en+ " reg" property
-
-serial-console$ count encode-string " console" property
 
 fload ${BP}/dev/utilities/get-option.fth
 
@@ -33,21 +41,11 @@ fload ${BP}/dev/utilities/get-option.fth
 defer default-ttya-mode
 defer default-ttyb-mode
 
-: $=  ( adr1 len1 adr2 len2 -- equal? )
-   rot tuck  <>  if  3drop false exit  then   ( adr1 adr2 len1 )
-   comp 0=
-;
-
 : init-tty ( -- )
-   " console" get-my-property 0=  if
-      decode-string 2swap 2drop
-      " ttya" $= if
-         ['] (default-ttya-mode)
-      else
-         ['] (default-ttyb-mode)
-      then
+   tty-base h# 3f8 =  if
+      ['] (default-ttya-mode)
    else
-      ['] default-tty-mode
+      ['] (default-ttyb-mode)
    then
    dup  to default-ttya-mode  to default-ttyb-mode
 ;
@@ -61,3 +59,4 @@ fload ${BP}/dev/serial/ttydriver.fth
 
 : write ( adr len -- #written ) uwrite ;
 
+end0

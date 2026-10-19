@@ -12,6 +12,7 @@
 #   make            build build/openboot.elf
 #   make run        boot it in QEMU with the console on stdio (COM1)
 #   make forth      build build/forth.dic, the hosted development Forth
+#   make fcode      tokenize the FCode drivers for the onboard devices
 #
 # The build follows the same sequence as the SPARC build:
 #
@@ -96,10 +97,39 @@ $(B)/version.fth: | $(B)
 	  echo "headers" ) > $@
 
 PROM_SRC = $(shell find $(BP)/arch/x86 $(BP)/os $(BP)/pkg $(BP)/dev \
-	$(BP)/fm/lib $(BP)/cpu/x86 $(BP)/arch/sun -name '*.fth')
+	$(BP)/fm/lib $(BP)/cpu/x86 $(BP)/arch/sun -name '*.fth' -o -name '*.tok')
+
+# ---- FCode drivers for the onboard devices (see dropins.fth)
+
+TOKENIZE_DIC	:= $(B)/tokenize.dic
+$(TOKENIZE_DIC): $(B)/forth.dic $(BP)/pkg/tokenizr/x86/loadtok.fth \
+		$(wildcard $(BP)/pkg/tokenizr/*.fth $(BP)/pkg/fcode/*.fth)
+	cd $(B) && $(FORTH) -d forth.dic -D tokenize-dic=tokenize.dic \
+		$(BP)/pkg/tokenizr/x86/loadtok.fth < /dev/null
+	test -s $@
+
+FCODE_DRIVERS := pcihost isa serial
+
+FCODE_IMAGES := $(FCODE_DRIVERS:%=$(B)/%.fc)
+
+TOK_serial	:= $(BP)/dev/pc/serial/serial.tok
+TOK_pcihost	:= $(BP)/dev/pc/pci/pcihost.tok
+TOK_isa		:= $(BP)/dev/pc/isa/isa.tok
+
+# Tokenize a driver; the tokenizer reports errors but doesn't fail, so
+# check its output for them.
+$(B)/%.fc: $(TOKENIZE_DIC) $(PROM_SRC)
+	cd $(B) && rm -f $*.fc && \
+	{ $(FORTH) -d tokenize.dic -s "tokenize $(TOK_$*) $*.fc" \
+		< /dev/null > $*.log 2>&1 ; status=$$? ; \
+	  grep -v "isn't unique\|Substituting" $*.log ; \
+	  test $$status = 0 && test -s $*.fc && \
+		! grep -q "Undefined\|rror" $*.log || { rm -f $*.fc ; false ; } ; }
+
+fcode: $(FCODE_IMAGES)
 
 $(B)/openboot.dic: $(B)/forth $(B)/kernel.dic $(B)/kernel.fth \
-		$(B)/version.fth $(PROM_SRC)
+		$(B)/version.fth $(FCODE_IMAGES) $(PROM_SRC)
 	cd $(B) && $(FORTH) $(KERNEL_FLAGS) \
 		-D LOADFILE=$(BP)/arch/x86/pc/loadprom.fth \
 		-D SAVEFILE=openboot.dic \
@@ -140,4 +170,4 @@ run: $(B)/openboot.elf
 clean:
 	rm -rf $(B)
 
-.PHONY: all forth run clean
+.PHONY: all forth fcode run clean

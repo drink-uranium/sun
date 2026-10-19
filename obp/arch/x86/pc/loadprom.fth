@@ -31,8 +31,7 @@ fload ${BP}/arch/x86/pc/loadconfig.fth	\ Configuration variables
 fload ${BP}/arch/x86/pc/nvram.fth	\ Configuration variable storage
 ' diag-switch? is diagnostic-mode?
 
-fload ${BP}/arch/x86/pc/isa.fth		\ Legacy devices
-fload ${BP}/arch/x86/pc/serial.fth	\ ttya and ttyb
+fload ${BP}/arch/x86/pc/dropins.fth	\ FCode drivers for onboard devices
 
 fload ${BP}/cpu/x86/catchexc.fth	\ Processor exceptions
 fload ${BP}/arch/x86/pc/ramdisk.fth	\ Multiboot modules as a boot device
@@ -49,6 +48,7 @@ headers
 \ Packages
 fload ${BP}/arch/x86/pc/loadpkg.fth
 
+fload ${BP}/arch/x86/pc/probe.fth	\ probe-all
 fload ${BP}/arch/x86/pc/startup.fth
 
 fload ${BP}/arch/x86/pc/cleanup.fth

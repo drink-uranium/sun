@@ -52,7 +52,7 @@ fload ${BP}/os/bootprom/canon.fth	\ canon client-services function
 
 defer mac-address  ' system-mac-address to mac-address
 
-fload ${BP}/os/bootprom/regwords.fth
+fload ${BP}/cpu/x86/regwords.fth	\ Memory and I/O port register access
 
 fload ${BP}/os/bootprom/release.fth
 

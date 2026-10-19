@@ -19,20 +19,25 @@ d# 1193182 constant pit-hz
    begin  h# 61 pc@ h# 20 and  until		\ Wait for OUT2 to go high
 ;
 
-0 value tsc-hz
-: calibrate-tsc  ( -- )
-   rdtsc  d# 11932 pit-wait  rdtsc  2swap d-	( d.ticks-in-10ms )
-   drop  d# 100 *  to tsc-hz
-;
-
+\ The TSC rate is kept in kHz (ticks per millisecond) so that it fits in a
+\ cell even for very fast clocks, and times are measured from the TSC value
+\ at calibration, so that quotients don't overflow.
+0 value tsc-khz
+2variable tsc0
 : tsc@  ( -- d )  rdtsc  ;
+: calibrate-tsc  ( -- )
+   tsc@  d# 11932 pit-wait  tsc@  2over d-	( d.start d.ticks-in-10ms )
+   d# 10 um/mod nip  1 max  to tsc-khz	( d.start )
+   tsc0 2!
+;
+: tsc-hz  ( -- hz )  tsc-khz d# 1000 um*  if  drop -1  then  ;
 
-\ Milliseconds since startup, derived from the time stamp counter
+\ Milliseconds since calibration (wraps after 49 days)
 : tsc-msecs  ( -- ms )
-   tsc@  tsc-hz d# 1000 /  um/mod nip
+   tsc@  tsc0 2@ d-  tsc-khz um/mod nip
 ;
 : tsc-us  ( us -- )
-   tsc-hz d# 1000000 / um*  tsc@ d+    ( d.end )
+   tsc-khz um*  d# 1000 um/mod nip  0  tsc@ d+    ( d.end )
    begin  2dup tsc@ du<  until  2drop
 ;
 : tsc-ms  ( ms -- )  0  ?do  d# 1000 tsc-us  loop  ;

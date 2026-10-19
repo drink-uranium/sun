@@ -15,8 +15,21 @@ decimal
 
 true value command-completion?
 
+\ preload.fth loaded these as transient; the tools need them resident
+fload ${BP}/fm/lib/brackif.fth
+fload ${BP}/fm/lib/needs.fth
+
+\ Keep every header; the tokenizer uses words that the libraries define
+\ as headerless.
+true is suppress-headerless?
+
 fload ${BP}/fm/lib/loadcomm.fth		\ Generic CPU-independent Forth tools
 fload ${BP}/os/sun/x86/loadmach.fth	\ CPU and OS-specific extensions
+
+\ loadcomm.fth and loadmach.fth load these as transient; the tools and the
+\ tokenizer need them after dispose
+fload ${BP}/fm/lib/filetool.fth
+fload ${BP}/fm/cwrapper/x86/savefort.fth
 
 \ fm/lib/debug.fth needs the single-stepping support (fm/lib/*/cpubpsup.fth)
 \ that the x86 port does not have yet.
@@ -31,8 +44,14 @@ alias lvariable variable
 
 dispose 0 0 set-transize
 
-\ The conditional-compilation words were transient and are gone now, so
-\ fetch the symbol with the wrapper's get-symbol service directly.
-" dic-file-name" d# 55 d# 45 fsyscall  ( adr len | 0 0 )
-dup 0= abort" ERROR: dic-file-name is not defined, Can't save"
-dup 1+ alloc-mem pack save-forth
+\ fm/lib/headless.fth was loaded as transient by preload.fth, so it is gone.
+\ Everything in the tools dictionary is headered from here on.
+: headers  ( -- )  ;
+: headerless  ( -- )  ;
+: headerless0  ( -- )  ;
+alias external headers
+
+[ifndef] dic-file-name
+-1 abort" ERROR: dic-file-name is not defined, Can't save"
+[then]
+[defined] dic-file-name dup 1+ alloc-mem pack save-forth

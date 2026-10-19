@@ -1,0 +1,45 @@
+id: @(#)pcihost.tok 1.1 26/10/19
+purpose: FCode driver for the PCI host bridge of PCs
+copyright: Copyright 2006 Sun Microsystems, Inc.  All Rights Reserved
+copyright: Copyright 2026 The OpenBoot x86 port contributors
+copyright: Use is subject to license terms.
+
+\ The PC counterpart of the SPARC host bridge drivers (psycho, schizo,
+\ dev/sun4v-devices/vpci/vpci.tok).  The probing of the devices behind
+\ the bridge is done by the generic PCI bus code (dev/pci/pcibus.fth);
+\ this driver supplies the configuration space access (mechanism #1),
+\ the address mapping and the address space to assign.
+\
+\ After loading this driver, the platform calls its "master-probe" method
+\ to create the nodes of the PCI devices.
+
+Fcode-Version3
+
+headerless
+
+" pci" name
+" pci" device-type
+3 encode-int " #address-cells" property
+2 encode-int " #size-cells" property
+" PNP0A03" encode-string " compatible" property
+d# 33.333.333 encode-int " clock-frequency" property
+
+fload ${BP}/dev/pc/pci/common.fth
+fload ${BP}/dev/pc/pci/bus-ops.fth
+fload ${BP}/dev/pci/pcibus.fth
+fload ${BP}/dev/pc/pci/methods.fth
+fload ${BP}/dev/pc/pci/resources.fth
+
+init-resources
+
+\ The memory window, as seen from the root node
+: make-ranges  ( -- )
+   0 0 encode-bytes
+   h# 0200.0000 en+  0 en+  pci-mem-base en+	\ PCI memory space
+   pci-mem-base en+				\ Processor address
+   0 en+  pci-mem-limit pci-mem-base - en+	\ Size
+   " ranges" property
+;
+make-ranges
+
+end0

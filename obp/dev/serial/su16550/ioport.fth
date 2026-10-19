@@ -5,8 +5,9 @@ copyright: Copyright 2026 The OpenBoot x86 port contributors
 copyright: Use is subject to license terms.
 
 \ The same as io.fth, for a UART in the I/O port space of an x86
-\ processor, as on PCs: the registers are accessed with pc@ and pc!, and
-\ the baud rate clock is the standard 1.8432 MHz.
+\ processor, as on PCs: the registers are accessed with rb@ and rb!,
+\ which use I/O instructions for port addresses (cpu/x86/regwords.fth),
+\ and the baud rate clock is the standard 1.8432 MHz.
 
 headers
 d# 90   constant ubufsize
@@ -62,8 +63,8 @@ create init-table
   h# 08 c, h# 04 c,	\ Modem Control Register = IRQ enable
 here init-table - constant #table-size
 
-: uart!  ( c offset -- )  uart + pc!  ;
-: uart@  ( offset -- c )  uart + pc@  ;
+: uart!  ( c offset -- )  uart + rb!  ;
+: uart@  ( offset -- c )  uart + rb@  ;
 
 \ read SIO modem status register
 : msr@  ( -- byte )  h# 06 uart@  ;
