@@ -24,6 +24,9 @@ copyright: Use is subject to license terms.
 
 headerless
 
+\ The kernel's client interface entry (cif-entry) calls cif-handler
+' do-cif is cif-handler
+
 h# 1.0000 constant /client-stack
 0 value client-stack
 
@@ -84,6 +87,7 @@ h# 1bad.b002 constant multiboot-header-magic
 d# 88 constant /mbi
 0 value mbi
 0 value mb-mmap
+0 value mb-entry
 d# 256 buffer: mb-cmdline
 create mb-loader-name  ," OpenBoot x86" 0 c,
 
@@ -97,11 +101,12 @@ create mb-loader-name  ," OpenBoot x86" 0 c,
    #ram-ranges @  d# 24 *  dup mbi d# 44 + l!		( len )
    alloc-mem dup to mb-mmap  mbi d# 48 + l!
    #ram-ranges @  0  ?do
-      mb-mmap i d# 24 * +  >r
-      d# 20 r@ l!				\ Entry size
-      i ram-range  swap r@ 4 + l!  0 r@ 8 + l!	\ Base
-      r@ d# 12 + l!  0 r@ d# 16 + l!		\ Length
-      1 r> d# 20 + l!				\ Type: RAM
+      mb-mmap i d# 24 * +  to mb-entry
+      d# 20 mb-entry l!				\ Entry size
+      i ram-range  swap mb-entry 4 + l!		\ Base
+      0 mb-entry 8 + l!
+      mb-entry d# 12 + l!  0 mb-entry d# 16 + l!	\ Length
+      1 mb-entry d# 20 + l!			\ Type: RAM
    loop
    mb-loader-name 1+  mbi d# 64 + l!		\ boot_loader_name
    h# 245  mbi l!				\ flags: mem cmdline mmap name

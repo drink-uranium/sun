@@ -305,12 +305,16 @@ code sgdt  ( adr -- )  pop %eax ; sgdt (%eax)  c;
 
 \ From Forth, call the C subroutine whose address is on the stack.
 \ Up to 6 arguments are passed; they are left on the stack.  The stack
-\ pointers are saved for callbacks.
+\ pointers are saved for callbacks.  The subroutine runs on the C stack
+\ (cstack), so that callbacks into Forth do not overwrite its frame.
 code call  ( [ arg5 .. arg0 ] adr -- [ arg5 .. arg0 ] result )
    pop %eax
    mov %esp,{'user saved-sp}(%edi)
    mov %ebp,{'user saved-rp}(%edi)
    mov %esp,%ebx
+   mov {'user cstack}(%edi),%esp
+   and $-16,%esp
+   sub $8,%esp
    pushl 20(%ebx)
    pushl 16(%ebx)
    pushl 12(%ebx)

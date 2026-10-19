@@ -112,7 +112,7 @@ headerless
 \ h# 7f454c46  \x7fELF
 : is-elf32? (  -- is-elf? )
    true
-   e32_magicword h# 7f454c46  =  and
+   elf32-header >e32_magicword be-l@ h# 7f454c46  =  and	\ Any byte order
    e32_class     ELFCLASS32   =  and
 ;
 : get-p32hdr ( filebase index -- )

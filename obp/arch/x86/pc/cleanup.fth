@@ -9,12 +9,18 @@ headers
 ' (cold-hook is cold-hook
 
 chain: finalize-chain ( -- )  here fence a! ;
+overload: execute-buffer ( adr,len -- )  execute-buffer  ;
 overload: stand-init    ( -- )
    stand-init finalize-chain
    ['] startup catch ?dup if .error  then
 ;
 overload: stand-init-io ( -- )  stand-init-io  ;
 overload: init          ( -- )  init  ;
+
+\ Make sure these words are available at the ok prompt
+overload: headers ;
+overload: headerless ;
+overload: external ;
 
 \ Install the various boot chains
 ' check-machine-state is check-machine-chain
