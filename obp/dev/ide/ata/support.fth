@@ -148,7 +148,11 @@ constant /ata-pkt
     r> drop				( true )
   else					( -- )
     r> >data-ptr l@			( buffer )
+[ifndef] little-endian-host		\ Put the identify words in native order
     h# 200 bounds do i w@ flip i w! 2 +loop
+[else]
+    drop
+[then]
     false				( false )
   then					( flag )
 ;

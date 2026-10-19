@@ -2,7 +2,9 @@
 """Boot the OpenBoot x86 image in QEMU, type commands at the ok prompt
 and print the console output.
 
-usage: qemu-ok.py [-t timeout] [-q qemu-args] image.elf 'command' ...
+usage: qemu-ok.py [-t timeout] [-r] [-q qemu-args] image.elf 'command' ...
+
+  -r  let the machine reset (by default QEMU exits on a reset)
 """
 import os, select, subprocess, sys, time
 
@@ -10,17 +12,21 @@ def main():
     args = sys.argv[1:]
     timeout = 30.0
     extra = []
+    reboot = False
     while args and args[0].startswith('-'):
         opt = args.pop(0)
         if opt == '-t':
             timeout = float(args.pop(0))
+        elif opt == '-r':
+            reboot = True
         elif opt == '-q':
             extra += args.pop(0).split()
     image = args.pop(0)
     cmds = args
     qemu = os.environ.get('QEMU', 'qemu-system-i386')
-    p = subprocess.Popen([qemu, '-m', '128', '-nographic', '-no-reboot',
-                          '-kernel', image] + extra,
+    p = subprocess.Popen([qemu, '-m', '128', '-nographic'] +
+                         ([] if reboot else ['-no-reboot']) +
+                         ['-kernel', image] + extra,
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
     out = b''

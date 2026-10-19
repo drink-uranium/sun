@@ -9,7 +9,7 @@ copyright: Use is subject to license terms.
 \ machine-dependent parts.
 
 fload ${BP}/dev/deblock.fth             \ Block-to-byte conversion package
-fload ${BP}/pkg/boot/sunlabel.fth       \ Sun Disk Label package
+fload ${BP}/arch/x86/pc/disklabel.fth	\ Disk label package: MBR and Sun labels
 fload ${BP}/arch/x86/pc/loadfb.fth	\ Frame buffer & terminal emulator
 fload ${BP}/pkg/boot/bootparm.fth       \ S boot command parser
 fload ${BP}/os/bootprom/callback.fth    \ Client callbacks

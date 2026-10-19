@@ -24,7 +24,10 @@ fload ${BP}/arch/sun4u/config/nvramrc.fth
 
 true	              config-flag    auto-boot?
 
-default-load-base     config-int     load-base
+\ Programs are loaded above the firmware's memory (see heap.fth), out of
+\ the way of the low memory and the first megabytes, where they usually
+\ run.  This leaves room for large images, such as kernels.
+h# 300.0000           config-int     load-base
 
 false   config-flag    auto-boot-on-error?
 

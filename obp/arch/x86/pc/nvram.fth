@@ -26,7 +26,13 @@ nvram-nvbase nvram-nvsize +   constant  nvram-keybase
 h# 100            constant  nvram-keysize
 nvram-keybase nvram-keysize +  constant  /nvram-image
 
-/nvram-image buffer: nvram-image
+\ The image is kept in RAM at a fixed address below the boot stub, which
+\ is part of the firmware's memory (memory.fth) and is not cleared by a
+\ warm reset (reset-all), so the variables and the reboot information
+\ survive it.  The configuration variable manager validates the contents,
+\ so after power-on the defaults are used.  Storing the variables in the
+\ boot flash is board-specific and not done.
+stub-base h# 1.0000 -  constant nvram-image
 
 headers
 root-device

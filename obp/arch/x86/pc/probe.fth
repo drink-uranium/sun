@@ -21,6 +21,7 @@ headerless
 fload ${BP}/dev/builtin.fth		\ The SUNW,builtin-drivers package
 
 0 value isa-node			\ phandle of the ISA bus, or 0
+0 value ide-node			\ phandle of the first IDE controller, or 0
 
 \ Methods of SUNW,builtin-drivers execute in the context of the node
 \ being created, with my-space, my-address set.
@@ -29,6 +30,21 @@ headers
    : class060100  ( -- )		\ PCI-to-ISA bridge
       current-device to isa-node  isa-fcode fcode-load
    ;
+
+   \ IDE controllers; the last two digits are the programming interface:
+   \ compatibility or native mode for each channel, bus mastering.
+   : (ide)  ( -- )
+      ide-node 0=  if  current-device to ide-node  then
+      ide-fcode fcode-load
+   ;
+   : class010180  ( -- )  (ide)  ;
+   : class010100  ( -- )  (ide)  ;
+   : class010105  ( -- )  (ide)  ;
+   : class01010a  ( -- )  (ide)  ;
+   : class01010f  ( -- )  (ide)  ;
+   : class010185  ( -- )  (ide)  ;
+   : class01018a  ( -- )  (ide)  ;
+   : class01018f  ( -- )  (ide)  ;
 headerless
 pop-package
 
@@ -44,6 +60,7 @@ pop-package
 \ ---- 2. Legacy ISA devices
 
 d# 80 buffer: isa-path
+d# 80 buffer: ide-path
 d# 96 buffer: alias-path
 
 \ A 16550 UART is present if its scratch register holds a value
@@ -61,11 +78,11 @@ d# 96 buffer: alias-path
    end-package
 ;
 
-\ Set a device alias to a device on the ISA bus
-: isa-alias  ( alias$ node$ -- )
-   isa-path count alias-path place  alias-path $cat
-   alias-path count $devalias
+\ Set a device alias to  path$  followed by  node$
+: path-alias  ( alias$ node$ path$ -- )
+   alias-path place  alias-path $cat  alias-path count $devalias
 ;
+: isa-alias  ( alias$ node$ -- )  isa-path count path-alias  ;
 
 : probe-serial  ( port unit$ alias$ -- )
    2>r 2>r  uart-present?  if
@@ -84,8 +101,27 @@ d# 96 buffer: alias-path
    h# 2f8 " i2f8" " ttyb" probe-serial
 ;
 
+\ ---- 3. Aliases for the IDE disks and CD-ROM drive
+
+\ Target numbers: 0 and 1 are the primary master and slave, 2 and 3 the
+\ secondary master and slave.  The usual place of a CD-ROM drive is the
+\ secondary master.
+: ide-alias  ( alias$ node$ -- )
+   ide-node phandle>devname ide-path place  ide-path count path-alias
+;
+: ide-aliases  ( -- )
+   ide-node 0=  if  exit  then
+   " disk"   " /disk@0,0"   ide-alias
+   " disk0"  " /disk@0,0"   ide-alias
+   " disk1"  " /disk@1,0"   ide-alias
+   " disk2"  " /disk@2,0"   ide-alias
+   " disk3"  " /disk@3,0"   ide-alias
+   " cdrom"  " /cdrom@2,0"  ide-alias
+;
+
 headers
 chain: probe-all  ( -- )
    probe-pci
    probe-isa
+   ide-aliases
 ;

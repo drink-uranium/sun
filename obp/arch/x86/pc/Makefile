@@ -108,13 +108,14 @@ $(TOKENIZE_DIC): $(B)/forth.dic $(BP)/pkg/tokenizr/x86/loadtok.fth \
 		$(BP)/pkg/tokenizr/x86/loadtok.fth < /dev/null
 	test -s $@
 
-FCODE_DRIVERS := pcihost isa serial
+FCODE_DRIVERS := pcihost isa serial ide
 
 FCODE_IMAGES := $(FCODE_DRIVERS:%=$(B)/%.fc)
 
 TOK_serial	:= $(BP)/dev/pc/serial/serial.tok
 TOK_pcihost	:= $(BP)/dev/pc/pci/pcihost.tok
 TOK_isa		:= $(BP)/dev/pc/isa/isa.tok
+TOK_ide		:= $(BP)/dev/pc/ide/ide.tok
 
 # Tokenize a driver; the tokenizer reports errors but doesn't fail, so
 # check its output for them.

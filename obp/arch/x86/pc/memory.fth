@@ -166,9 +166,11 @@ headers
 ;
 headerless
 
-\ The firmware's own memory: the boot stub, the dictionary, the stacks,
-\ the user area and the heap.
-: fw-memory  ( -- adr len )  stub-base  initial-mem-end /fw-heap +  over -  ;
+\ The firmware's own memory: the NVRAM image (64K below the stub), the
+\ boot stub, the dictionary, the stacks, the user area and the heap.
+: fw-memory  ( -- adr len )
+   stub-base h# 1.0000 -  initial-mem-end /fw-heap +  over -
+;
 
 : claim-range  ( adr len -- )
    >r 0 r> 0 ['] mem-claim catch  if  2drop 2drop  else  2drop  then

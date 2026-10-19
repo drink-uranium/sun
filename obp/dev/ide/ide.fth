@@ -68,8 +68,17 @@ headerless
 : ctrl! ( data -- ) ctrl-regs + rb! ;
 : ctrl@ ( -- data ) ctrl-regs + rb@ ;
 
+\ The IDE data register transfers the bytes of the data stream in little-
+\ endian order.  On a big-endian host the words are byte-swapped so that
+\ "i w!" puts the bytes in memory in stream order; a little-endian host
+\ (x86) gets that order without swapping.
+[ifdef] little-endian-host
+: data!	  ( data -- ) cmd-regs rw!  ;
+: data@   ( -- data ) cmd-regs rw@  ;
+[else]
 : data!	  ( data -- ) wbflip cmd-regs rw!  ;
 : data@   ( -- data ) cmd-regs rw@ wbflip  ;
+[then]
 : err@    ( -- data ) h# 1 ata@ ;
 : cmd!    ( data -- ) h# 7 ata! ;
 : stat@   ( -- data ) h# 7 ata@ ;
@@ -237,9 +246,22 @@ headerless
 : #emit ( n -- ) ascii 0 + emit ;
 
 h# 200 buffer: id-buf
+[ifdef] little-endian-host
+\ The identify data is in native word order; the characters of the model
+\ string are stored two to a word, the first in the high byte.
+: Model-# ( -- )
+  ." Model: " id-buf d# 54 +				( adr )
+  dup w@ if
+     d# 40 bounds do  i w@ wbsplit emit emit  2 +loop
+  else
+     drop ." <Unknown>"
+  then
+;
+[else]
 : Model-# ( -- )
   ." Model: " id-buf d# 54 + dup c@ if d# 40 type else drop ." <Unknown>" then
 ;
+[then]
 
 h# 12  buffer: id-pkt
 h# 12  buffer: id-cmd
@@ -247,8 +269,12 @@ h# 12  buffer: id-cmd
 : .not-present ( -- false ) 4 spaces ." Not Present" false ;
 
 : (reset) ( check? -- ok? )
+   \ Select the master so that the status read is from a drive that
+   \ exists, then look for BSY right away: some devices (and emulators)
+   \ finish the reset well within the time that SRST is held.
+   cmd-reg-bits 6 ata!
    6 2 ctrl!
-   1 ms
    if  1 wait-busy?  else  true  then
+   1 ms
    2 2 ctrl!
 ;

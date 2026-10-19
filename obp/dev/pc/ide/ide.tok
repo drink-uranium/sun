@@ -1,0 +1,36 @@
+id: @(#)ide.tok 1.1 26/10/19
+purpose: FCode driver for the PCI IDE controllers of PCs
+copyright: Copyright 1997 Sun Microsystems, Inc.  All Rights Reserved
+copyright: Copyright 2026 The OpenBoot x86 port contributors
+copyright: Use is subject to license terms.
+
+\ The PC version of dev/ide/pci/ide.tok: the same driver, with the PCI
+\ interface for PC chipset controllers (dev/pc/ide/pci.fth) and the
+\ data path for a little-endian host.  It is loaded through the
+\ SUNW,builtin-drivers package for PCI functions of class 0101xx.
+
+fcode-version2
+
+hex
+
+[define] little-endian-host
+
+h# 0 constant h/w-reg-base
+
+h# 1 constant ide-primary-intr
+
+fload ${BP}/dev/ide/ide.fth
+fload ${BP}/dev/pc/ide/pci.fth
+fload ${BP}/dev/ide/methods.fth
+
+  new-device
+    " ide-disk" encode-string " compatible" property
+    fload ${BP}/dev/ide/ata/disk.fth
+  finish-device
+
+  new-device
+    " ide-cdrom" encode-string " compatible" property
+    fload ${BP}/dev/ide/atapi/cdrom.fth
+  finish-device
+
+end0

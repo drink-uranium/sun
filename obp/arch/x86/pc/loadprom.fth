@@ -36,6 +36,7 @@ fload ${BP}/arch/x86/pc/dropins.fth	\ FCode drivers for onboard devices
 fload ${BP}/cpu/x86/catchexc.fth	\ Processor exceptions
 fload ${BP}/arch/x86/pc/ramdisk.fth	\ Multiboot modules as a boot device
 
+fload ${BP}/arch/x86/pc/reset.fth	\ reset-all
 fload ${BP}/cpu/x86/restart.fth		\ go
 
 headerless
