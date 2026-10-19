@@ -374,13 +374,38 @@ end-code
 
 \ Entered from the boot stub after an exception.  The processor state has
 \ been saved; Forth starts again with empty stacks.
+\ The exception handler runs with fresh stacks, which overwrite the stacks
+\ of the interrupted Forth code, so if save areas have been set up, the
+\ stacks are copied there first, for the stack backtrace words.
+nuser exception-pssave		\ Save area for the data stack, or 0
+nuser exception-rssave		\ Save area for the return stack, or 0
+
 label exception-entry
    .globl exception_entry
 exception_entry:
-   mov {'body main-task},%edi
+   cld
+   mov {'body main-task},%edx
+   mov {'user exception-rssave}(%edx),%edi
+   test %edi,%edi
+   jz 1f
+   mov {'user .rp0}(%edx),%esi
+   sub ${rs-size-t},%esi
+   mov ${rs-size-t},%ecx
+   shr $2,%ecx
+   rep movsl
+1:
+   mov {'user exception-pssave}(%edx),%edi
+   test %edi,%edi
+   jz 2f
+   mov {'user .sp0}(%edx),%esi
+   sub ${ps-size-t},%esi
+   mov ${ps-size-t},%ecx
+   shr $2,%ecx
+   rep movsl
+2:
+   mov %edx,%edi
    mov {'user .rp0}(%edi),%ebp
    mov {'user .sp0}(%edi),%esp
-   cld
    mov ${' exception-thread >body},%esi
 c;
 

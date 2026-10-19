@@ -52,6 +52,8 @@ end-string-array
 
 headers
 stand-init: Install exception handlers
+   ps-size alloc-mem  dup to pssave  exception-pssave !
+   rs-size alloc-mem  dup to rssave  exception-rssave !
    init-client-entries
    exception-entry  exception-entry-adr l!
 ;
