@@ -1,0 +1,132 @@
+id: @(#)vgatext.tok 1.1 26/10/19
+purpose: FCode driver for VGA displays in text mode
+copyright: Copyright 2026 The OpenBoot x86 port contributors
+copyright: Use is subject to license terms.
+
+\ A display driver for the VGA-compatible display controllers of PCs
+\ (PCI class 030000), which the video BIOS or coreboot leaves in 80x25
+\ color text mode.  Instead of the pixel drawing routines of a frame
+\ buffer driver (pkg/termemu/fb8.fth), it supplies character cell
+\ routines for the terminal emulator: draw-character, insert-lines,
+\ toggle-cursor and so on.
+\
+\ The text buffer is at the legacy VGA address b8000 and the CRT
+\ controller at the legacy I/O ports 3d4/3d5.  These addresses are fixed
+\ for a VGA-compatible controller and are identity-mapped on PCs.
+
+Fcode-Version3
+
+headerless
+
+" display" name
+" display" device-type
+" pnpPNP,900" encode-string " compatible" property
+
+\ The legacy VGA ranges, which are not relocatable
+: en+  ( adr len n -- adr' len' )  encode-int encode+  ;
+my-space encode-int  0 en+ 0 en+ 0 en+ 0 en+		\ Configuration space
+my-space h# 8200.0000 or en+  0 en+  h# a.0000 en+  0 en+  h# 2.0000 en+
+my-space h# 8100.0000 or en+  0 en+  h# 3b0 en+  0 en+  h# 30 en+
+" reg" property
+
+d# 80 constant text-columns
+d# 25 constant text-lines
+h# b.8000 constant text-buffer
+text-columns 2* constant /text-line
+
+h# 07 constant normal-attr		\ Light gray on black
+h# 70 constant inverse-attr		\ Black on light gray
+
+: attr  ( -- attr )
+   inverse? inverse-screen? xor  if  inverse-attr  else  normal-attr  then
+;
+: blank  ( -- cell )  attr 8 << bl or  ;
+
+: cell-adr  ( column line -- adr )  text-columns * + 2* text-buffer +  ;
+: cursor-adr  ( -- adr )  column# line# cell-adr  ;
+: line-adr  ( line -- adr )  0 swap cell-adr  ;
+
+: fill-cells  ( adr #cells -- )
+   2* bounds  ?do  blank i w!  2 +loop
+;
+
+\ CRT controller cursor location
+h# 3d4 constant crtc-index
+h# 3d5 constant crtc-data
+: crtc!  ( b index -- )  crtc-index rb!  crtc-data rb!  ;
+
+: vga-toggle-cursor  ( -- )
+   \ The hardware cursor shows the current position whether or not the
+   \ terminal emulator is between its two toggles.
+   column# line# text-columns * +  wbsplit  h# e crtc!  h# f crtc!
+;
+
+: vga-draw-character  ( char -- )
+   attr 8 << or  cursor-adr w!
+;
+
+: vga-erase-screen  ( -- )  0 line-adr  text-columns text-lines *  fill-cells  ;
+: vga-reset-screen  ( -- )  ;
+: vga-blink-screen  ( -- )  ;
+
+: vga-invert-screen  ( -- )
+   0 line-adr  text-columns text-lines * 2*  bounds  ?do
+      i 1+ c@  h# 77 xor  i 1+ c!
+   2 +loop
+;
+
+\ Characters from the cursor to the end of the line
+: rest-of-line  ( -- #cells )  text-columns column# -  ;
+
+: vga-insert-characters  ( n -- )
+   rest-of-line min  >r
+   cursor-adr  dup r@ 2* +  rest-of-line r@ - 2*  move
+   cursor-adr r> fill-cells
+;
+: vga-delete-characters  ( n -- )
+   rest-of-line min  >r
+   cursor-adr r@ 2* +  cursor-adr  rest-of-line r@ - 2*  move
+   text-columns r@ - line# cell-adr  r> fill-cells
+;
+
+\ Lines from the cursor line to the bottom
+: lines-below  ( -- #lines )  text-lines line# -  ;
+
+: vga-insert-lines  ( n -- )
+   lines-below min  >r
+   line# line-adr  dup r@ /text-line * +  lines-below r@ - /text-line *  move
+   line# line-adr  r> text-columns *  fill-cells
+;
+: vga-delete-lines  ( n -- )
+   lines-below min  >r
+   line# line-adr  r@ /text-line * +  line# line-adr
+   lines-below r@ - /text-line *  move
+   text-lines r@ - line-adr  r> text-columns *  fill-cells
+;
+
+: vga-draw-logo  ( line# adr width height -- )  2drop 2drop  ;
+
+: vga-install  ( -- )
+   text-columns to #columns   text-lines to #lines
+   \ The geometry of the 9x16 character cells of the text mode, for the
+   \ terminal emulator's users (e.g. the banner's room for a logo)
+   d# 8 to char-width   d# 16 to char-height
+   d# 640 to screen-width   d# 400 to screen-height
+   ['] vga-draw-character    to draw-character
+   ['] vga-insert-characters to insert-characters
+   ['] vga-delete-characters to delete-characters
+   ['] vga-insert-lines      to insert-lines
+   ['] vga-delete-lines      to delete-lines
+   ['] vga-blink-screen      to blink-screen
+   ['] vga-invert-screen     to invert-screen
+   ['] vga-reset-screen      to reset-screen
+   ['] vga-erase-screen      to erase-screen
+   ['] vga-toggle-cursor     to toggle-cursor
+   ['] vga-draw-logo         to draw-logo
+;
+: vga-remove  ( -- )  ;
+
+['] vga-install is-install
+['] vga-remove  is-remove
+
+end0

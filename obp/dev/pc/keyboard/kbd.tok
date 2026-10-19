@@ -1,0 +1,141 @@
+id: @(#)kbd.tok 1.1 26/10/19
+purpose: FCode driver for the PS/2 keyboard of PCs
+copyright: Copyright 2026 The OpenBoot x86 port contributors
+copyright: Use is subject to license terms.
+
+\ The keyboard on the 8042-compatible keyboard controller of a PC, at ISA
+\ I/O ports 60 (data) and 64 (status and command).  The controller is
+\ polled.  The video BIOS or coreboot leaves the controller translating
+\ the keyboard's codes to scan code set 1, which is what this driver
+\ decodes, with a US layout.  The cursor keys produce the ANSI escape
+\ sequences that the command line editor understands.
+
+Fcode-Version3
+
+headerless
+
+" keyboard" name
+" keyboard" device-type
+" pnpPNP,303" encode-string " compatible" property
+
+: en+  ( adr len n -- adr' len' )  encode-int encode+  ;
+my-space encode-int  h# 60 en+  1 en+  my-space en+  h# 64 en+  1 en+
+" reg" property
+1 encode-int " interrupts" property
+
+my-address constant data-port
+data-port 4 + constant status-port
+
+hex
+create unshifted-keys
+   00 c, 1b c, 31 c, 32 c, 33 c, 34 c, 35 c, 36 c,
+   37 c, 38 c, 39 c, 30 c, 2d c, 3d c, 08 c, 09 c,
+   71 c, 77 c, 65 c, 72 c, 74 c, 79 c, 75 c, 69 c,
+   6f c, 70 c, 5b c, 5d c, 0d c, 00 c, 61 c, 73 c,
+   64 c, 66 c, 67 c, 68 c, 6a c, 6b c, 6c c, 3b c,
+   27 c, 60 c, 00 c, 5c c, 7a c, 78 c, 63 c, 76 c,
+   62 c, 6e c, 6d c, 2c c, 2e c, 2f c, 00 c, 2a c,
+   00 c, 20 c,
+
+create shifted-keys
+   00 c, 1b c, 21 c, 40 c, 23 c, 24 c, 25 c, 5e c,
+   26 c, 2a c, 28 c, 29 c, 5f c, 2b c, 08 c, 09 c,
+   51 c, 57 c, 45 c, 52 c, 54 c, 59 c, 55 c, 49 c,
+   4f c, 50 c, 7b c, 7d c, 0d c, 00 c, 41 c, 53 c,
+   44 c, 46 c, 47 c, 48 c, 4a c, 4b c, 4c c, 3a c,
+   22 c, 7e c, 00 c, 7c c, 5a c, 58 c, 43 c, 56 c,
+   42 c, 4e c, 4d c, 3c c, 3e c, 3f c, 00 c, 2a c,
+   00 c, 20 c,
+decimal
+
+0 value shift?
+0 value ctrl?
+0 value caps?
+0 value extended?
+
+\ Characters waiting to be read, for keys that produce several
+d# 8 constant /pending
+/pending buffer: pending
+0 value #pending
+
+: pend  ( char -- )
+   #pending /pending <  if  pending #pending + c!  #pending 1+ to #pending
+   else  drop  then
+;
+: unpend  ( -- char )
+   pending c@  pending dup 1+ swap #pending 1- move  #pending 1- to #pending
+;
+
+: escape-seq  ( char -- )  h# 1b pend  ascii [ pend  pend  ;
+
+: scan-code?  ( -- code true | false )
+   status-port rb@  dup 1 and 0=  if  drop false exit  then
+   data-port rb@  swap h# 20 and  if  drop false exit  then  \ Mouse data
+   true
+;
+
+: letter?  ( char -- flag )  dup ascii a ascii z between  swap ascii A ascii Z between or  ;
+
+: key-char  ( code -- )
+   shift?  if  shifted-keys  else  unshifted-keys  then  + c@   ( char )
+   ?dup 0=  if  exit  then
+   caps?  if  dup letter?  if  h# 20 xor  then  then
+   ctrl?  if  h# 1f and  then
+   pend
+;
+
+: key-down  ( code -- )
+   case
+      h# 2a of  true to shift?  endof
+      h# 36 of  true to shift?  endof
+      h# 1d of  true to ctrl?   endof
+      h# 3a of  caps? 0= to caps?  endof
+      h# 48 of  ascii A escape-seq  endof	\ Cursor keys
+      h# 50 of  ascii B escape-seq  endof
+      h# 4d of  ascii C escape-seq  endof
+      h# 4b of  ascii D escape-seq  endof
+      h# 53 of  h# 7f pend  endof		\ Delete
+      ( default )  dup h# 3a <  if  dup key-char  then
+   endcase
+;
+
+: key-up  ( code -- )
+   case
+      h# 2a of  false to shift?  endof
+      h# 36 of  false to shift?  endof
+      h# 1d of  false to ctrl?   endof
+   endcase
+;
+
+: handle-code  ( code -- )
+   dup h# e0 =  if  drop  true to extended?  exit  then
+   extended?  if
+      false to extended?
+      \ Keyboards send shift codes around some extended keys; ignore them
+      dup h# 7f and  dup h# 2a =  swap h# 36 =  or  if  drop exit  then
+   then
+   dup h# 80 and  if  h# 7f and key-up  else  key-down  then
+;
+
+: poll-keyboard  ( -- )
+   begin  scan-code?  while  handle-code  repeat
+;
+
+external
+
+: open  ( -- ok? )
+   \ The controller returns ff for everything if it isn't there
+   status-port rb@ h# ff <>
+;
+: close  ( -- )  ;
+
+: read  ( adr len -- #read )
+   poll-keyboard
+   #pending 0=  if  2drop -2 exit  then
+   #pending min  tuck  0  ?do  unpend over i + c!  loop  drop
+;
+
+: install-abort  ( -- )  ;
+: remove-abort  ( -- )  ;
+
+end0

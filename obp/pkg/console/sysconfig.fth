@@ -74,7 +74,11 @@ defer .memory-install-msg ' (memory-installed is .memory-install-msg
    ." Serial #"  serial# (.d) type  ." ."
 ;
 
-: .ether  ( -- )  ." Ethernet address " .enet-addr  ;
+\ Systems without a system Ethernet address (e.g. PCs, where each network
+\ interface has its own) leave it out.
+: .ether  ( -- )
+   system-mac-address nip  if  ." Ethernet address " .enet-addr ." , "  then
+;
 
 : .hostid  ( -- )
    push-hex

@@ -22,6 +22,7 @@ fload ${BP}/dev/builtin.fth		\ The SUNW,builtin-drivers package
 
 0 value isa-node			\ phandle of the ISA bus, or 0
 0 value ide-node			\ phandle of the first IDE controller, or 0
+0 value display-node			\ phandle of the VGA display, or 0
 
 \ Methods of SUNW,builtin-drivers execute in the context of the node
 \ being created, with my-space, my-address set.
@@ -36,6 +37,10 @@ headers
    : (ide)  ( -- )
       ide-node 0=  if  current-device to ide-node  then
       ide-fcode fcode-load
+   ;
+   : class030000  ( -- )		\ VGA-compatible display controller
+      display-node  if  exit  then	\ Only the primary one is in text mode
+      current-device to display-node  vgatext-fcode fcode-load
    ;
    : class010180  ( -- )  (ide)  ;
    : class010100  ( -- )  (ide)  ;
@@ -99,9 +104,20 @@ d# 96 buffer: alias-path
    isa-node phandle>devname isa-path place
    h# 3f8 " i3f8" " ttya" probe-serial
    h# 2f8 " i2f8" " ttyb" probe-serial
+   h# 64 pc@ h# ff <>  if			\ Keyboard controller
+      " i60" kbd-fcode isa-device
+      " keyboard" " /keyboard@i60" isa-alias
+   then
 ;
 
-\ ---- 3. Aliases for the IDE disks and CD-ROM drive
+\ ---- 3. Aliases for the display, the IDE disks and the CD-ROM drive
+
+: display-alias  ( -- )
+   display-node 0=  if  exit  then
+   " screen"  " "  display-node phandle>devname ide-path place
+   ide-path count path-alias
+;
+
 
 \ Target numbers: 0 and 1 are the primary master and slave, 2 and 3 the
 \ secondary master and slave.  The usual place of a CD-ROM drive is the
@@ -123,5 +139,6 @@ headers
 chain: probe-all  ( -- )
    probe-pci
    probe-isa
+   display-alias
    ide-aliases
 ;

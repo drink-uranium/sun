@@ -8,6 +8,8 @@ decimal
 warning off
 caps on
 
+[define] RELEASE			\ Leave out debugging information (sub-release)
+
 fload ${BP}/fm/lib/loadcomm.fth		\ Generic CPU-independent Forth tools
 fload ${BP}/os/sun/x86/loadmach.fth	\ CPU and OS-specific extensions
 fload ${BP}/os/sun/x86/loadfw.fth	\ Platform-independent Open Firmware

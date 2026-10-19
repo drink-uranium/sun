@@ -391,7 +391,10 @@ defer build-bar-resources ( offset -- )
       dup 0> while				( xdr,len )
          decode-int				( xdr,len phys.hi )
          dup >r 4 0 do drop decode-int loop	( xdr,len len )
-         r> dup cfg>ss# 3 and if		( xdr,len len phys.hi )
+         \ Non-relocatable entries (e.g. legacy VGA or IDE addresses)
+         \ are not base address registers.
+         r> dup cfg>ss# 3 and  over not-relocatable? 0=  and  if
+						( xdr,len len phys.hi )
             dup get-bar# >bar-struct >r		( xdr,len len phys.hi )
             r@ >bar.implemented? @  if		( xdr,len len phys.hi )
                drop r@ >bar.size @ over <  if	( xdr,len len reg-bigger? )

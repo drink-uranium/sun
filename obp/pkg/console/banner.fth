@@ -116,7 +116,7 @@ true value auto-banner?
 [ifndef] RELEASE
       ?spaces  sub-release ". cr
 [then]
-      ?spaces  .ether              ." , "  .hostid         ." ."            cr
+      ?spaces  .ether                  .hostid         ." ."            cr
    then
 
    cr  cr

@@ -36,3 +36,5 @@ fcode-image: pcihost-fcode  pcihost.fc
 fcode-image: isa-fcode      isa.fc
 fcode-image: serial-fcode   serial.fc
 fcode-image: ide-fcode      ide.fc
+fcode-image: vgatext-fcode  vgatext.fc
+fcode-image: kbd-fcode      kbd.fc
