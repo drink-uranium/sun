@@ -23,7 +23,9 @@ defer .error#
 	 dup -1 =  if
 	    drop
 	 else
-	    show-error
+	    \ A plain "throw" doesn't record where the error happened, so
+	    \ record the current input source rather than showing a stale one
+	    mark-error show-error
 	    dup in-dictionary?  if  count type  else  .error#  then
 	 then
       then

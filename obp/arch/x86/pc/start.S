@@ -109,8 +109,9 @@ stub_end:	.long	stub_end_mark	/* +18 end of the stub */
  * Exception entry points.  Each pushes a dummy error code if the
  * processor doesn't, then the vector number.
  */
-#define EXC_NOERR(n)	.p2align 3; exc_##n: pushl $0; pushl $n; jmp exc_common
-#define EXC_ERR(n)	.p2align 3; exc_##n: pushl $n; jmp exc_common
+#define EXC_STRIDE	16	/* The stubs are at most 9 bytes long */
+#define EXC_NOERR(n)	.p2align 4; exc_##n: pushl $0; pushl $n; jmp exc_common
+#define EXC_ERR(n)	.p2align 4; exc_##n: pushl $n; jmp exc_common
 
 	.p2align 4
 exc_stubs:
@@ -232,7 +233,7 @@ setup_idt:
 	shrl	$16, %eax
 	movw	%ax, 6(%edi)		/* offset 31:16 */
 	addl	$8, %edi
-	addl	$8, %ebx
+	addl	$EXC_STRIDE, %ebx
 	incl	%ecx
 	cmpl	$20, %ecx
 	jne	7b

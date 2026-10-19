@@ -11,6 +11,7 @@
 #
 #   make            build build/openboot.elf
 #   make run        boot it in QEMU with the console on stdio (COM1)
+#   make test       smoke test in QEMU (test/smoke.sh)
 #   make forth      build build/forth.dic, the hosted development Forth
 #   make fcode      tokenize the FCode drivers for the onboard devices
 #
@@ -170,7 +171,10 @@ QEMU_FLAGS ?= -m 128 -nographic -no-reboot
 run: $(B)/openboot.elf
 	$(QEMU) $(QEMU_FLAGS) -kernel $(B)/openboot.elf
 
+test: $(B)/openboot.elf
+	QEMU=$(QEMU) sh test/smoke.sh $(B)
+
 clean:
 	rm -rf $(B)
 
-.PHONY: all forth fcode run clean
+.PHONY: all forth fcode run test clean
